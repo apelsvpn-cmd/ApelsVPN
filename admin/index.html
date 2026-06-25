@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍊 Апелс VPN — Админка</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #fff; padding: 20px; }
+        .header { background: linear-gradient(135deg, #FF8C00, #FF6600); padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        .header h1 { font-size: 24px; margin-bottom: 5px; }
+        .header p { opacity: 0.8; font-size: 14px; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: #1a1a1a; padding: 15px; border-radius: 10px; border-left: 3px solid #FF8C00; }
+        .stat-card .label { font-size: 12px; color: #888; margin-bottom: 5px; }
+        .stat-card .value { font-size: 24px; font-weight: bold; color: #FF8C00; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap; }
+        .tab { padding: 10px 20px; background: #1a1a1a; border: none; color: #888; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .tab.active { background: #FF8C00; color: #000; font-weight: bold; }
+        .search { width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #333; color: #fff; border-radius: 8px; margin-bottom: 15px; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; background: #1a1a1a; border-radius: 10px; overflow: hidden; }
+        th { background: #FF8C00; color: #000; padding: 10px; text-align: left; font-size: 13px; }
+        td { padding: 10px; border-bottom: 1px solid #2a2a2a; font-size: 13px; }
+        tr:hover { background: #222; }
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; }
+        .badge-green { background: #1b5e20; color: #4CAF50; }
+        .badge-red { background: #4a0000; color: #f44336; }
+        .badge-gray { background: #333; color: #888; }
+        .badge-orange { background: #3e2000; color: #FF8C00; }
+        .loading { text-align: center; padding: 40px; color: #888; }
+        .error { text-align: center; padding: 40px; color: #f44336; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🍊 Апелс VPN</h1>
+        <p>Панель управления</p>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card"><div class="label">👥 Пользователей</div><div class="value" id="totalUsers">—</div></div>
+        <div class="stat-card"><div class="label">🟢 Активных</div><div class="value" id="activeUsers">—</div></div>
+        <div class="stat-card"><div class="label">🍊 Подписки</div><div class="value" id="paidUsers">—</div></div>
+        <div class="stat-card"><div class="label">🔥 Пробные</div><div class="value" id="trialUsers">—</div></div>
+        <div class="stat-card"><div class="label">💰 Баланс</div><div class="value" id="totalBalance">—</div></div>
+        <div class="stat-card"><div class="label">💵 Доход</div><div class="value" id="totalIncome">—</div></div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('users')">👥 Пользователи</button>
+        <button class="tab" onclick="showTab('payments')">💰 Платежи</button>
+    </div>
+
+    <div id="tab-users">
+        <input type="text" class="search" id="search" placeholder="🔍 Поиск по ID или username..." oninput="filterUsers()">
+        <div id="usersLoading" class="loading">Загрузка...</div>
+        <div id="usersError" class="error hidden">Ошибка загрузки</div>
+        <table class="hidden" id="usersTable">
+            <thead><tr><th>ID</th><th>Username</th><th>Баланс</th><th>Подписка</th><th>Тариф</th><th>Пробный</th><th>Статус</th><th>Дата</th></tr></thead>
+            <tbody id="usersBody"></tbody>
+        </table>
+    </div>
+
+    <div id="tab-payments" class="hidden">
+        <div id="paymentsLoading" class="loading">Загрузка...</div>
+        <div id="paymentsError" class="error hidden">Ошибка загрузки</div>
+        <table class="hidden" id="paymentsTable">
+            <thead><tr><th>ID</th><th>User ID</th><th>Сумма</th><th>Тариф</th><th>Статус</th><th>Дата</th></tr></thead>
+            <tbody id="paymentsBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        // НАСТРОЙКИ — замените на свои
+        const API = 'http://ВАШ_IP:3456';
+        const AUTH_KEY = 'apels2025secret';
+
+        async function fetchAPI(endpoint) {
+            const res = await fetch(API + endpoint, { headers: { 'x-auth-key': AUTH_KEY } });
+            if (!res.ok) throw new Error('API error');
+            return res.json();
+        }
+
+        // Статистика
+        async function loadStats() {
+            try {
+                const data = await fetchAPI('/api/stats');
+                document.getElementById('totalUsers').textContent = data.total_users;
+                document.getElementById('activeUsers').textContent = data.active_users;
+                document.getElementById('paidUsers').textContent = data.paid_users;
+                document.getElementById('trialUsers').textContent = data.trial_users;
+                document.getElementById('totalBalance').textContent = data.total_balance + ' ₽';
+                document.getElementById('totalIncome').textContent = data.total_income + ' ₽';
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        // Пользователи
+        let allUsers = [];
+        async function loadUsers() {
+            document.getElementById('usersLoading').classList.remove('hidden');
+            document.getElementById('usersTable').classList.add('hidden');
+            try {
+                allUsers = await fetchAPI('/api/users');
+                renderUsers(allUsers);
+                document.getElementById('usersTable').classList.remove('hidden');
+            } catch(e) {
+                document.getElementById('usersError').classList.remove('hidden');
+            }
+            document.getElementById('usersLoading').classList.add('hidden');
+        }
+
+        function renderUsers(users) {
+            document.getElementById('usersBody').innerHTML = users.map(u => `
+                <tr>
+                    <td><code>${u.user_id}</code></td>
+                    <td>${u.username ? '@' + u.username : '—'}</td>
+                    <td>${u.balance} ₽</td>
+                    <td><span class="badge ${u.has_subscription ? 'badge-green' : 'badge-gray'}">${u.has_subscription ? '✅' : '❌'}</span></td>
+                    <td>${u.subscription_tariff || '—'}</td>
+                    <td><span class="badge ${u.has_trial ? 'badge-orange' : 'badge-gray'}">${u.has_trial ? 'Да' : 'Нет'}</span></td>
+                    <td><span class="badge ${u.is_banned ? 'badge-red' : 'badge-green'}">${u.is_banned ? 'Заблокирован' : 'Активен'}</span></td>
+                    <td>${u.created_at ? new Date(u.created_at).toLocaleDateString('ru-RU') : '—'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function filterUsers() {
+            const q = document.getElementById('search').value.toLowerCase();
+            renderUsers(allUsers.filter(u => 
+                String(u.user_id).includes(q) || (u.username || '').toLowerCase().includes(q)
+            ));
+        }
+
+        // Платежи
+        async function loadPayments() {
+            document.getElementById('paymentsLoading').classList.remove('hidden');
+            document.getElementById('paymentsTable').classList.add('hidden');
+            try {
+                const payments = await fetchAPI('/api/payments');
+                document.getElementById('paymentsBody').innerHTML = payments.map(p => `
+                    <tr>
+                        <td>#${p.id}</td>
+                        <td><code>${p.user_id}</code></td>
+                        <td>${p.amount} ₽</td>
+                        <td>${p.tariff}</td>
+                        <td><span class="badge ${p.status === 'confirmed' ? 'badge-green' : p.status === 'rejected' ? 'badge-red' : 'badge-orange'}">${p.status === 'confirmed' ? '✅ Подтверждён' : p.status === 'rejected' ? '❌ Отклонён' : '⏳ Ожидает'}</span></td>
+                        <td>${new Date(p.created_at).toLocaleDateString('ru-RU')}</td>
+                    </tr>
+                `).join('');
+                document.getElementById('paymentsTable').classList.remove('hidden');
+            } catch(e) {
+                document.getElementById('paymentsError').classList.remove('hidden');
+            }
+            document.getElementById('paymentsLoading').classList.add('hidden');
+        }
+
+        // Переключение вкладок
+        function showTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('tab-users').classList.toggle('hidden', tab !== 'users');
+            document.getElementById('tab-payments').classList.toggle('hidden', tab !== 'payments');
+            if (tab === 'payments') loadPayments();
+        }
+
+        // Запуск
+        loadStats();
+        loadUsers();
+    </script>
+</body>
+</html>

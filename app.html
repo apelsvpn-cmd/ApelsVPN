@@ -60,14 +60,11 @@
         <h1>Апелс VPN</h1>
         <div class="id-text" id="userIdDisplay">Загрузка...</div>
     </div>
-
     <div class="balance-card">
         <div class="amount" id="balanceDisplay">—</div>
         <div class="label">баланс</div>
     </div>
-
     <div class="err" id="errorBox"></div>
-
     <div class="nav">
         <button class="nav-btn active" onclick="showSection('main')">📊</button>
         <button class="nav-btn" onclick="showSection('tariffs')">🎫</button>
@@ -76,7 +73,6 @@
         <button class="nav-btn" onclick="showSection('about')">ℹ️</button>
         <button class="nav-btn" onclick="toggleTheme()">🌓</button>
     </div>
-
     <div class="section active" id="section-main">
         <div class="card">
             <h3>📱 Моя подписка</h3>
@@ -93,23 +89,20 @@
         </div>
         <button class="btn btn-orange" onclick="showSection('tariffs')">🎫 Продлить подписку</button>
     </div>
-
     <div class="section" id="section-tariffs">
         <h3 style="color:var(--orange);margin-bottom:8px">Выберите тариф</h3>
         <div id="tariffsList"></div>
         <button class="btn btn-orange" onclick="buyTariff()" style="display:none" id="buyBtn">💳 Купить</button>
         <div id="buyResult" style="text-align:center;margin-top:8px;font-size:13px"></div>
     </div>
-
     <div class="section" id="section-referral">
         <div class="card">
             <h3>🍊 Пригласи друга</h3>
-            <p>+24 ₽ вам и другу за регистрацию!</p>
+            <p>+24 ₽ вам и другу!</p>
             <div class="ref-link" id="refLink">—</div>
-            <button class="copy-btn" onclick="copyText('refLink')">📋 Копировать ссылку</button>
+            <button class="copy-btn" onclick="copyText('refLink')">📋 Копировать</button>
         </div>
     </div>
-
     <div class="section" id="section-promo">
         <div class="card">
             <h3>🎁 Активировать промокод</h3>
@@ -118,7 +111,6 @@
             <div id="promoResult" style="text-align:center;margin-top:8px;font-size:13px"></div>
         </div>
     </div>
-
     <div class="section" id="section-about">
         <div class="card">
             <h3>ℹ️ О сервисе</h3>
@@ -130,12 +122,12 @@
         </div>
     </div>
 </div>
-
 <script>
-const API = 'https://92.63.99.25:3443/api';
+// API твоего сервера
+const API = 'http://92.63.99.25:3457/api';
 let uid = 0, balance = 0, selectedTariff = null;
 
-// Получаем ID из URL (бот передаст ?uid=...) или Telegram WebApp
+// Получаем ID из URL (бот передаст ?uid=...) или Telegram
 const params = new URLSearchParams(window.location.search);
 uid = parseInt(params.get('uid') || '0');
 if (!uid) {
@@ -147,10 +139,10 @@ if (!uid) {
         }
     } catch(e) {}
 }
-if (uid && uid > 1000) localStorage.setItem('apels_uid', uid);
+if (uid > 1000) localStorage.setItem('apels_uid', uid);
 else uid = parseInt(localStorage.getItem('apels_uid') || '0');
 
-document.getElementById('userIdDisplay').textContent = uid > 1000 ? 'ID: ' + uid : 'Нажмите START в боте';
+document.getElementById('userIdDisplay').textContent = uid > 1000 ? 'ID: ' + uid : 'Откройте через @ApelsIT_bot';
 
 function err(msg) { const e = document.getElementById('errorBox'); e.textContent = '⚠️ ' + msg; e.style.display = 'block'; setTimeout(() => e.style.display = 'none', 3500); }
 function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2000); }
@@ -180,7 +172,6 @@ async function loadData() {
         document.getElementById('refBalance').textContent = (d.ref_balance || 0) + ' ₽';
         document.getElementById('refLink').textContent = 'https://t.me/ApelsIT_bot?start=ref_' + uid;
     } catch(e) { err('Нет связи с сервером'); }
-
     const tariffs = [
         { id: 'month', name: '🍊 1 месяц', price: 119, days: 30 },
         { id: '3months', name: '🍊🍊 3 месяца', price: 258, days: 90 },
@@ -192,13 +183,7 @@ async function loadData() {
     ).join('');
 }
 
-function selectTariff(id) {
-    document.querySelectorAll('.tariff-card').forEach(c => c.classList.remove('selected'));
-    document.getElementById('tf-' + id).classList.add('selected');
-    selectedTariff = id;
-    document.getElementById('buyBtn').style.display = 'block';
-}
-
+function selectTariff(id) { document.querySelectorAll('.tariff-card').forEach(c => c.classList.remove('selected')); document.getElementById('tf-' + id).classList.add('selected'); selectedTariff = id; document.getElementById('buyBtn').style.display = 'block'; }
 async function buyTariff() {
     if (!selectedTariff || !uid || uid < 1000) { err('Откройте через @ApelsIT_bot'); return; }
     try {
@@ -208,7 +193,6 @@ async function buyTariff() {
         if (d.success) loadData();
     } catch(e) { err('Ошибка соединения'); }
 }
-
 async function activatePromo() {
     const code = document.getElementById('promoInput').value.trim();
     if (!code || !uid || uid < 1000) { err('Введите код и откройте через бота'); return; }
@@ -219,26 +203,14 @@ async function activatePromo() {
         if (d.success) { loadData(); document.getElementById('promoInput').value = ''; }
     } catch(e) { err('Ошибка соединения'); }
 }
-
 function copyText(id) {
     const el = document.getElementById(id);
     const text = el?.textContent || '';
     if (!text || text === '—' || text.includes('Нет')) { err('Нечего копировать'); return; }
     navigator.clipboard?.writeText(text).then(() => toast('📋 Скопировано!')).catch(() => err('Не удалось скопировать'));
 }
-
-function showSection(name) {
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    document.getElementById('section-' + name).classList.add('active');
-}
-
-function toggleTheme() {
-    document.body.classList.toggle('light');
-    localStorage.setItem('webapp_theme', document.body.classList.contains('light') ? 'light' : 'dark');
-}
-
+function showSection(name) { document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active')); event.target.classList.add('active'); document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById('section-' + name).classList.add('active'); }
+function toggleTheme() { document.body.classList.toggle('light'); localStorage.setItem('webapp_theme', document.body.classList.contains('light') ? 'light' : 'dark'); }
 if (localStorage.getItem('webapp_theme') === 'light') document.body.classList.add('light');
 loadData();
 </script>

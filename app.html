@@ -42,6 +42,7 @@
         .status-badge { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 11px; }
         .status-active { background: #1b5e20; color: #4CAF50; }
         .status-expired { background: #4a0000; color: #f44336; }
+        .error-msg { background: #4a0000; color: #f44336; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -55,6 +56,7 @@
         <div class="amount" id="balanceDisplay">— ₽</div>
         <div style="font-size:12px;opacity:0.8">Ваш баланс</div>
     </div>
+    <div id="errorBox" class="error-msg" style="display:none"></div>
     <div class="nav">
         <button class="nav-btn active" onclick="showSection('main')">📊</button>
         <button class="nav-btn" onclick="showSection('tariffs')">🎫</button>
@@ -114,16 +116,24 @@
 </div>
 <script>
 let uid = 0, balance = 0, selectedTariff = null;
-const API = 'http://92.63.99.25:3457/api';
+const API = 'https://92.63.99.25:3443/api';
 const params = new URLSearchParams(window.location.search);
 uid = parseInt(params.get('uid') || '0');
 if (!uid) { try { if (window.Telegram?.WebApp?.initDataUnsafe?.user) { uid = window.Telegram.WebApp.initDataUnsafe.user.id; window.Telegram.WebApp.ready(); window.Telegram.WebApp.expand(); } } catch(e) {} }
 document.getElementById('userIdDisplay').textContent = 'ID: ' + (uid || 'гость');
 
+function showError(msg) {
+    const el = document.getElementById('errorBox');
+    el.textContent = '⚠️ ' + msg;
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 4000);
+}
+
 async function loadData() {
     if (!uid || uid < 1000) return;
     try {
         const res = await fetch(API + '/user_data?uid=' + uid);
+        if (!res.ok) throw new Error('Ошибка сервера');
         const data = await res.json();
         balance = data.balance || 0;
         document.getElementById('balanceDisplay').textContent = balance + ' ₽';
@@ -140,7 +150,9 @@ async function loadData() {
         document.getElementById('refCount').textContent = data.ref_count || 0;
         document.getElementById('refBalance').textContent = (data.ref_balance || 0) + ' ₽';
         document.getElementById('refLink').textContent = 'https://t.me/ApelsIT_bot?start=ref_' + uid;
-    } catch(e) {}
+    } catch(e) {
+        showError('Нет связи с сервером. Проверьте интернет.');
+    }
     const tariffs = [
         { id: 'month', name: '🍊 1 месяц', price: 119, days: 30 },
         { id: '3months', name: '🍊🍊 3 месяца', price: 258, days: 90 },
@@ -153,22 +165,35 @@ async function loadData() {
 }
 function selectTariff(id) { document.querySelectorAll('.tariff-card').forEach(c => c.classList.remove('selected')); document.getElementById('tariff-' + id).classList.add('selected'); selectedTariff = id; document.getElementById('buyBtn').style.display = 'block'; }
 async function buyTariff() {
-    if (!selectedTariff || !uid) return;
-    const res = await fetch(API + '/buy_tariff', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid, tariff: selectedTariff }) });
-    const data = await res.json();
-    document.getElementById('buyResult').innerHTML = data.success ? '<span style="color:#4CAF50">✅ ' + data.message + '</span>' : '<span style="color:#f44336">❌ ' + (data.message || 'Ошибка') + '</span>';
-    if (data.success) loadData();
+    if (!selectedTariff || !uid) { showError('Выберите тариф и откройте через бота'); return; }
+    try {
+        const res = await fetch(API + '/buy_tariff', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid, tariff: selectedTariff }) });
+        const data = await res.json();
+        document.getElementById('buyResult').innerHTML = data.success ? '<span style="color:#4CAF50">✅ ' + data.message + '</span>' : '<span style="color:#f44336">❌ ' + (data.message || 'Ошибка') + '</span>';
+        if (data.success) loadData();
+    } catch(e) { showError('Ошибка соединения с сервером'); }
 }
 async function activatePromo() {
     const code = document.getElementById('promoInput').value.trim();
-    if (!code || !uid) return;
-    const res = await fetch(API + '/activate_promo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid, code }) });
-    const data = await res.json();
-    document.getElementById('promoResult').innerHTML = data.success ? '<span style="color:#4CAF50">✅ ' + data.message + '</span>' : '<span style="color:#f44336">❌ ' + (data.message || 'Ошибка') + '</span>';
-    if (data.success) loadData();
+    if (!code || !uid) { showError('Введите код и откройте через бота'); return; }
+    try {
+        const res = await fetch(API + '/activate_promo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid, code }) });
+        const data = await res.json();
+        document.getElementById('promoResult').innerHTML = data.success ? '<span style="color:#4CAF50">✅ ' + data.message + '</span>' : '<span style="color:#f44336">❌ ' + (data.message || 'Ошибка') + '</span>';
+        if (data.success) loadData();
+    } catch(e) { showError('Ошибка соединения с сервером'); }
 }
-function copyText(id) { navigator.clipboard.writeText(document.getElementById(id).textContent).then(() => showToast('📋 Скопировано!')); }
-function showSection(name) { document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active')); event.target.classList.add('active'); document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById('section-' + name).classList.add('active'); }
+function copyText(id) { 
+    const el = document.getElementById(id);
+    if (!el || el.textContent === '—' || el.textContent.includes('Нет')) { showError('Нечего копировать'); return; }
+    navigator.clipboard.writeText(el.textContent).then(() => showToast('📋 Скопировано!')); 
+}
+function showSection(name) { 
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active')); 
+    event.target.classList.add('active'); 
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); 
+    document.getElementById('section-' + name).classList.add('active'); 
+}
 function toggleTheme() { document.body.classList.toggle('light'); localStorage.setItem('webapp_theme', document.body.classList.contains('light') ? 'light' : 'dark'); }
 function showToast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2000); }
 if (localStorage.getItem('webapp_theme') === 'light') document.body.classList.add('light');

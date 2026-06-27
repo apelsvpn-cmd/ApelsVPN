@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🍊 Апелс VPN</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, sans-serif; background: #0a0a0a; color: #fff; padding: 15px; min-height: 100vh; }
+        body.light { background: #f5f5f5; color: #222; }
+        .header { text-align: center; padding: 15px 0; }
+        .header .logo { font-size: 45px; }
+        .header h1 { color: #FF8C00; font-size: 20px; }
+        .balance-card { background: linear-gradient(135deg, #FF8C00, #FF6600); color: #000; padding: 18px; border-radius: 15px; text-align: center; margin: 12px 0; }
+        .balance-card .amount { font-size: 32px; font-weight: bold; }
+        .card { background: #1a1a1a; padding: 16px; border-radius: 12px; margin: 10px 0; }
+        body.light .card { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .card h3 { color: #FF8C00; margin-bottom: 8px; font-size: 15px; }
+        .card p { font-size: 13px; margin: 4px 0; color: #aaa; }
+        body.light .card p { color: #666; }
+        .btn { padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 14px; width: 100%; margin: 5px 0; }
+        .btn-orange { background: #FF8C00; color: #000; }
+        .btn-outline { background: transparent; border: 2px solid #FF8C00; color: #FF8C00; }
+        .nav { display: flex; gap: 5px; margin: 12px 0; flex-wrap: wrap; }
+        .nav-btn { flex: 1; min-width: 50px; padding: 10px; background: #1a1a1a; border: none; color: #888; border-radius: 8px; cursor: pointer; font-size: 11px; text-align: center; }
+        body.light .nav-btn { background: #e0e0e0; color: #555; }
+        .nav-btn.active { background: #FF8C00; color: #000; font-weight: bold; }
+        .section { display: none; }
+        .section.active { display: block; }
+        .tariff-card { background: #1a1a1a; padding: 14px; border-radius: 10px; text-align: center; cursor: pointer; border: 2px solid transparent; margin: 8px 0; }
+        body.light .tariff-card { background: #fff; }
+        .tariff-card.selected { border-color: #FF8C00; }
+        .tariff-card .name { font-size: 15px; font-weight: bold; color: #FF8C00; }
+        .tariff-card .price { font-size: 22px; font-weight: bold; margin: 5px 0; }
+        .ref-link { background: #0a0a0a; padding: 10px; border-radius: 8px; word-break: break-all; font-size: 11px; margin: 8px 0; color: #FF8C00; }
+        body.light .ref-link { background: #f0f0f0; }
+        .promo-input { width: 100%; padding: 12px; background: #0a0a0a; border: 1px solid #333; color: #fff; border-radius: 8px; font-size: 14px; margin: 8px 0; }
+        body.light .promo-input { background: #fff; border-color: #ccc; color: #222; }
+        .copy-btn { padding: 8px 14px; background: #333; border: none; color: #fff; border-radius: 6px; cursor: pointer; font-size: 12px; }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #FF8C00; color: #000; padding: 10px 22px; border-radius: 20px; font-weight: bold; z-index: 999; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        .status-badge { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 11px; }
+        .status-active { background: #1b5e20; color: #4CAF50; }
+        .status-expired { background: #4a0000; color: #f44336; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="header">
+        <div class="logo">🍊</div>
+        <h1>Апелс VPN</h1>
+        <div style="font-size:11px;color:#888" id="userIdDisplay">ID: —</div>
+    </div>
+    <div class="balance-card">
+        <div class="amount" id="balanceDisplay">— ₽</div>
+        <div style="font-size:12px;opacity:0.8">Ваш баланс</div>
+    </div>
+    <div class="nav">
+        <button class="nav-btn active" onclick="showSection('main')">📊</button>
+        <button class="nav-btn" onclick="showSection('tariffs')">🎫</button>
+        <button class="nav-btn" onclick="showSection('referral')">👥</button>
+        <button class="nav-btn" onclick="showSection('promo')">🎁</button>
+        <button class="nav-btn" onclick="showSection('about')">ℹ️</button>
+        <button class="nav-btn" onclick="toggleTheme()">🌓</button>
+    </div>
+    <div class="section active" id="section-main">
+        <div class="card">
+            <h3>📱 Подписка</h3>
+            <p>Статус: <span class="status-badge" id="subStatus">—</span></p>
+            <p>Тариф: <b id="subTariff">—</b></p>
+            <p>До: <b id="subExpiry">—</b></p>
+            <div class="ref-link" id="subLink">—</div>
+            <button class="copy-btn" onclick="copyText('subLink')">📋 Копировать ссылку</button>
+        </div>
+        <div class="card">
+            <h3>👥 Рефералы</h3>
+            <p>Приглашено: <b id="refCount">0</b></p>
+            <p>Заработано: <b id="refBalance">0 ₽</b></p>
+        </div>
+        <button class="btn btn-orange" onclick="showSection('tariffs')">🎫 Продлить подписку</button>
+    </div>
+    <div class="section" id="section-tariffs">
+        <h3 style="color:#FF8C00;margin-bottom:10px">Выберите тариф</h3>
+        <div id="tariffsList"></div>
+        <button class="btn btn-orange" onclick="buyTariff()" style="display:none" id="buyBtn">Купить</button>
+        <div id="buyResult" style="text-align:center;margin-top:8px"></div>
+    </div>
+    <div class="section" id="section-referral">
+        <div class="card">
+            <h3>🍊 Пригласи друга</h3>
+            <p>+24 ₽ вам и другу!</p>
+            <div class="ref-link" id="refLink">—</div>
+            <button class="copy-btn" onclick="copyText('refLink')">📋 Копировать</button>
+        </div>
+    </div>
+    <div class="section" id="section-promo">
+        <div class="card">
+            <h3>🎁 Промокод</h3>
+            <input type="text" class="promo-input" id="promoInput" placeholder="Введите код">
+            <button class="btn btn-orange" onclick="activatePromo()">Активировать</button>
+            <div id="promoResult" style="text-align:center;margin-top:8px"></div>
+        </div>
+    </div>
+    <div class="section" id="section-about">
+        <div class="card">
+            <h3>ℹ️ О сервисе</h3>
+            <p>🚀 Скорость: VLESS/v2ray</p>
+            <p>🔒 Приватность: без логов</p>
+            <p>🌍 20+ локаций</p>
+            <p>💎 Безлимит</p>
+            <p>⚡ Поддержка: @n_alexey_d</p>
+        </div>
+    </div>
+</div>
+<script>
+let uid = 0, balance = 0, selectedTariff = null;
+const API = 'http://92.63.99.25:3457/api';
+const params = new URLSearchParams(window.location.search);
+uid = parseInt(params.get('uid') || '0');
+if (!uid) { try { if (window.Telegram?.WebApp?.initDataUnsafe?.user) { uid = window.Telegram.WebApp.initDataUnsafe.user.id; window.Telegram.WebApp.ready(); window.Telegram.WebApp.expand(); } } catch(e) {} }
+document.getElementById('userIdDisplay').textContent = 'ID: ' + (uid || 'гость');
+
+async function loadData() {
+    if (!uid || uid < 1000) return;
+    try {
+        const res = await fetch(API + '/user_data?uid=' + uid);
+        const data = await res.json();
+        balance = data.balance || 0;
+        document.getElementById('balanceDisplay').textContent = balance + ' ₽';
+        if (data.has_subscription) {
+            document.getElementById('subStatus').className = 'status-badge status-active';
+            document.getElementById('subStatus').textContent = '✅ Активна';
+            document.getElementById('subTariff').textContent = data.subscription_tariff || '—';
+            document.getElementById('subExpiry').textContent = data.subscription_expiry ? new Date(data.subscription_expiry).toLocaleDateString('ru-RU') : '—';
+            document.getElementById('subLink').textContent = 'https://apelsvpn.fvds.ru:5555/sub/' + uid;
+        } else {
+            document.getElementById('subStatus').className = 'status-badge status-expired';
+            document.getElementById('subStatus').textContent = '❌ Нет';
+        }
+        document.getElementById('refCount').textContent = data.ref_count || 0;
+        document.getElementById('refBalance').textContent = (data.ref_balance || 0) + ' ₽';
+        document.getElementById('refLink').textContent = 'https://t.me/ApelsIT_bot?start=ref_' + uid;
+    } catch(e) {}
+    const tariffs = [
+        { id: 'month', name: '🍊 1 месяц', price: 119, days: 30 },
+        { id: '3months', name: '🍊🍊 3 месяца', price: 258, days: 90 },
+        { id: '6months', name: '🍊🍊🍊 Полгода', price: 387, days: 180 },
+    ];
+    document.getElementById('tariffsList').innerHTML = tariffs.map(t =>
+        `<div class="tariff-card" onclick="selectTariff('${t.id}')" id="tariff-${t.id}">
+            <div class="name">${t.name}</div><div class="price">${t.price} ₽</div><div style="color:#888;font-size:12px">${t.days} дней</div></div>`
+    ).join('');
+}
+function selectTariff(id) { document.querySelectorAll('.tariff-card').forEach(c => c.classList.remove('selected')); document.getElementById('tariff-' + id).classList.add('selected'); selectedTariff = id; document.getElementById('buyBtn').style.display = 'block'; }
+async function buyTariff() {
+    if (!selectedTariff || !uid) return;
+    const res = await fetch(API + '/buy_tariff', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid, tariff: selectedTariff }) });
+    const data = await res.json();
+    document.getElementById('buyResult').innerHTML = data.success ? '<span style="color:#4CAF50">✅ ' + data.message + '</span>' : '<span style="color:#f44336">❌ ' + (data.message || 'Ошибка') + '</span>';
+    if (data.success) loadData();
+}
+async function activatePromo() {
+    const code = document.getElementById('promoInput').value.trim();
+    if (!code || !uid) return;
+    const res = await fetch(API + '/activate_promo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid, code }) });
+    const data = await res.json();
+    document.getElementById('promoResult').innerHTML = data.success ? '<span style="color:#4CAF50">✅ ' + data.message + '</span>' : '<span style="color:#f44336">❌ ' + (data.message || 'Ошибка') + '</span>';
+    if (data.success) loadData();
+}
+function copyText(id) { navigator.clipboard.writeText(document.getElementById(id).textContent).then(() => showToast('📋 Скопировано!')); }
+function showSection(name) { document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active')); event.target.classList.add('active'); document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById('section-' + name).classList.add('active'); }
+function toggleTheme() { document.body.classList.toggle('light'); localStorage.setItem('webapp_theme', document.body.classList.contains('light') ? 'light' : 'dark'); }
+function showToast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2000); }
+if (localStorage.getItem('webapp_theme') === 'light') document.body.classList.add('light');
+loadData();
+</script>
+</body>
+</html>
